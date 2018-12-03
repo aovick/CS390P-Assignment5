@@ -1,0 +1,113 @@
+<html>
+<head>
+    <title>SPA University</title>
+    <link rel="stylesheet" type="text/css" href="application.css" />
+</head>
+<body>
+
+<button class="button" onclick="fetch('courses', ['name', 'department', 'number', 'credits'])">Courses</button>
+<button class="button" onclick="fetch('sections', ['course_id', 'number', 'semester', 'room'])">Sections</button>
+<button class="button" onclick="fetch('students', ['name'])">Students</button>
+<button class="button" onclick="fetch('enrollments', ['section_id', 'student_id'])">Enrollments</button>
+
+<div id="table">
+</div>
+
+<script>
+var table = document.getElementById("table");
+var clear = function() {
+    while (table.firstChild) {
+        table.removeChild(table.firstChild);
+    }
+};
+
+var http_request = new XMLHttpRequest();
+var fetch = function(which, fields) {
+    http_request.open("GET", "http://localhost:3000/" + which + ".json", true);
+    http_request.onreadystatechange = function () {
+        let done = 4, ok = 200;
+        if (http_request.readyState === done && http_request.status === ok) {
+            clear();
+
+            let h1 = document.createElement('h1');
+            h1.textContent = which.replace(/^\w/, c => c.toUpperCase());
+            table.appendChild(h1);
+
+            let t = document.createElement('table');
+            table.appendChild(t);
+            let thead = document.createElement('thead');
+            t.appendChild(thead);
+            let headRow = document.createElement('tr');
+            thead.appendChild(headRow);
+
+            let columnNames = getColumnNames(which);
+            for (i in columnNames) {
+                var th = document.createElement('th');
+                th.textContent = columnNames[i];
+                headRow.appendChild(th);
+            }
+            thead.appendChild(headRow);
+
+            let json = JSON.parse(http_request.responseText);
+            for (i in json) {
+                let tr = document.createElement('tr');
+                for (f in fields) {
+                    let field = fields[f];
+                    let id = json[i][field];
+
+                    var td = document.createElement('td');
+                    if (field.includes("_id")) {
+                        var target = field.substring(0, field.indexOf("_id")) + 's';
+                        td.textContent = "";
+                        subFetch(target, td, id);
+                    }
+                    else
+                        td.textContent = id;
+                    tr.appendChild(td);
+                }
+                t.appendChild(tr);
+            }
+        }
+    }
+    http_request.send(null);
+};
+
+var subFetch = function (target, td, id) {
+    var http_request = new XMLHttpRequest();
+    http_request.open("GET", "http://localhost:3000/" + target + ".json", true);
+    http_request.onreadystatechange = function () {
+        let done = 4, ok = 200;
+        if (http_request.readyState === done && http_request.status === ok) {
+            let json = JSON.parse(http_request.responseText);
+            for (j in json) {
+                if (json[j]['id'] == id) {
+                    if (target == "sections") {
+                        td.textContent = json[j]['number'];
+                        subFetch("courses", td, json[j]['course_id']);
+                    }
+                    else
+                        td.textContent = json[j]['name'] + " " + td.textContent;
+                }
+            }
+        }
+    }
+    http_request.send(null);
+};
+
+
+var getColumnNames = function (type) {
+    switch(type) {
+        case "courses":
+            return ['Name', 'Department', 'Number', 'Credits'];
+        case "sections":
+            return ['Course', 'Number', 'Semester', 'Room'];
+        case "students":
+            return ['Name'];
+        case "enrollments":
+            return ['Section', 'Student'];
+    }
+};
+</script>
+
+</body>
+</html>
